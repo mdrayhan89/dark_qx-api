@@ -9,21 +9,20 @@ from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-# ✅ SSL/TLS স্ট্যাটিক এনভায়রনমেন্ট
+# ✅ SSL/TLS স্ট্যাটিক এনভায়রনমেন্ট কনফিগারেশন (Render-এর জন্য)
 cert_path = certifi.where()
 os.environ['SSL_CERT_FILE'] = cert_path
 os.environ['WEBSOCKET_CLIENT_CA_BUNDLE'] = cert_path
 
 try:
     from pyquotex.stable_api import Quotex
-    # ❌ সমস্যা তৈরি করা 'process_candles' ইমপোর্টটি পুরোপুরি রিমুভ করা হয়েছে
 except ImportError as e:
     print(f"❌ Error: Missing pyquotex - {e}")
     exit(1)
 
-app = FastAPI(title="Quotex Live Candle API — Render Production")
+app = FastAPI(title="Quotex Live Candle API — Render Fully Fixed")
 
-# ✅ CORS এনাবল (যাতে ক্লাউডফ্লেয়ার বা ব্রাউজার থেকে ব্লক না খায়)
+# ✅ CORS পলিসি এনাবল (যাতে ক্লাউডফ্লেয়ার বা ব্রাউজার থেকে রিকোয়েস্ট ব্লক না হয়)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,7 +65,7 @@ ASSET_DISPLAY_MAP = {
     "UKBrent_otc": "UK Brent (OTC)", "USCrude_otc": "US Crude (OTC)"
 }
 
-# ✅ রেন্ডার মেমোরি সেভার ক্যাশ ওয়াচার (ইন্টারনাল পাইথন ডিকশনারি মেথড দিয়ে হ্যান্ডেল করা)
+# ✅ ক্যান্ডেল ডাটা ওয়াচার (রেন্ডার মেমোরি সেভার)
 async def candle_data_watcher():
     while True:
         try:
@@ -75,22 +74,23 @@ async def candle_data_watcher():
                 for asset in list(raw_candles.keys()):
                     data = raw_candles[asset]
                     if data:
-                        # যদি ডাটা ডিকশনারি ফরম্যাটে থাকে তবে ভ্যালুগুলো লিস্ট আকারে নেওয়া হবে
                         if isinstance(data, dict):
                             CANDLE_CACHE[asset] = list(data.values())
                         elif isinstance(data, list):
                             CANDLE_CACHE[asset] = list(data)
         except Exception:
             pass
-        await asyncio.sleep(1.0)  # ১ সেকেন্ড বাফার (Render CPU ঠিক রাখার জন্য)
+        await asyncio.sleep(1.0)
 
+# ✅ কোটেক্স কানেকশন কোর ইঞ্জিন (ValueError পুরোপুরি ফিক্সড)
 def run_quotex_worker():
     global QUOTEX_LOOP, CLIENT
     QUOTEX_LOOP = asyncio.new_event_loop()
     asyncio.set_event_loop(QUOTEX_LOOP)
     
-    email = "trrayhanislam786@gmail.com"
-    password = "Mdrayhan@655"
+    # 🔐 রেন্ডারের এনভায়রনমেন্ট ভেরিয়েবল থেকে ক্রেডেনশিয়াল রিড করার লজিক
+    email = os.environ.get("QUOTEX_EMAIL", "trrayhanislam786@gmail.com")
+    password = os.environ.get("QUOTEX_PASSWORD", "Mdrayhan@655")
     
     print("🔐 Render Isolated Engine Connecting...")
     CLIENT = Quotex(email=email, password=password, host="qxbroker.com", lang="en")
