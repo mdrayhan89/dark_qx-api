@@ -16,12 +16,12 @@ os.environ['WEBSOCKET_CLIENT_CA_BUNDLE'] = cert_path
 
 try:
     from pyquotex.stable_api import Quotex
-    from pyquotex.utils.processor import process_candles
+    # ❌ সমস্যা তৈরি করা 'process_candles' ইমপোর্টটি পুরোপুরি রিমুভ করা হয়েছে
 except ImportError as e:
     print(f"❌ Error: Missing pyquotex - {e}")
     exit(1)
 
-app = FastAPI(title="Quotex Live Candle API — Render Ultra Optimized")
+app = FastAPI(title="Quotex Live Candle API — Render Production")
 
 # ✅ CORS এনাবল (যাতে ক্লাউডফ্লেয়ার বা ব্রাউজার থেকে ব্লক না খায়)
 app.add_middleware(
@@ -42,7 +42,7 @@ CLIENT = None
 QUOTEX_LOOP = None
 CONNECTED_EVENT = threading.Event()
 
-# গ্লোবাল লাইটওয়েট মেমোরি ক্যাশ (RAM বাঁচানোর জন্য শুধু রিকোয়েস্টেড পেয়ার সেভ হবে)
+# গ্লোবাল লাইটওয়েট মেমোরি ক্যাশ (র‍্যাম বাঁচানোর জন্য)
 CANDLE_CACHE = {}
 
 ASSET_DISPLAY_MAP = {
@@ -66,7 +66,7 @@ ASSET_DISPLAY_MAP = {
     "UKBrent_otc": "UK Brent (OTC)", "USCrude_otc": "US Crude (OTC)"
 }
 
-# ✅ রেন্ডার মেমোরি সেভার ক্যাশ ওয়াচার (আপনার live_chart_27 এর প্রসেসর লজিক)
+# ✅ রেন্ডার মেমোরি সেভার ক্যাশ ওয়াচার (ইন্টারনাল পাইথন ডিকশনারি মেথড দিয়ে হ্যান্ডেল করা)
 async def candle_data_watcher():
     while True:
         try:
@@ -75,12 +75,14 @@ async def candle_data_watcher():
                 for asset in list(raw_candles.keys()):
                     data = raw_candles[asset]
                     if data:
-                        # র‍্যাম ক্লিয়ার রাখতে শুধুমাত্র সলিড ডাটা ফিল্টার করে ক্যাশে কপি করা হচ্ছে
-                        processed = data.values() if isinstance(data, dict) else data
-                        CANDLE_CACHE[asset] = list(processed)
+                        # যদি ডাটা ডিকশনারি ফরম্যাটে থাকে তবে ভ্যালুগুলো লিস্ট আকারে নেওয়া হবে
+                        if isinstance(data, dict):
+                            CANDLE_CACHE[asset] = list(data.values())
+                        elif isinstance(data, list):
+                            CANDLE_CACHE[asset] = list(data)
         except Exception:
             pass
-        await asyncio.sleep(1.0)  # ১ সেকেন্ড বাফার (CPU ইউসেজ কমানোর জন্য)
+        await asyncio.sleep(1.0)  # ১ সেকেন্ড বাফার (Render CPU ঠিক রাখার জন্য)
 
 def run_quotex_worker():
     global QUOTEX_LOOP, CLIENT
@@ -116,7 +118,6 @@ def get_candles(
     pair: str = Query("USDMXN_OTC"),
     count: int = Query(1000)
 ):
-    # রেন্ডার কোল্ড-স্টার্ট হ্যান্ডলিং (সার্ভার স্লিপ থেকে জাগলে ১মবার এটি সেফ রাখবে)
     if not CONNECTED_EVENT.is_set() or CLIENT is None or CLIENT.api is None:
         return {**OWNER_INFO, "total_count": 0, "data": [], "message": "Server is waking up/initializing. Please refresh after 5 seconds."}
 
@@ -130,23 +131,17 @@ def get_candles(
     if not target_pair:
         raise HTTPException(status_code=400, detail=f"Pair '{pair}' is invalid.")
 
-    # ক্যাশ ডিকশনারি থেকে ডাটা রিড
     raw_data = CANDLE_CACHE.get(target_pair, [])
     
-    # ৩. ডাটা ক্যাশে না থাকলে ইভেন্ট লুপ লক না করে ডাইনামিক কল
     if not raw_data:
         try:
-            # রিয়েলটাইম স্ট্রিম স্টার্ট রিকোয়েস্ট ব্যাকগ্রাউন্ড থ্রেডে পাঠানো হলো
             asyncio.run_coroutine_threadsafe(CLIENT.start_realtime_price(target_pair, 60), QUOTEX_LOOP)
-            
-            # সকেট ডাটা রিভ করার জন্য রেন্ডার মেইন থ্রেডে ৩ সেকেন্ডের সেফ পজ (Internal Server Error আটকাতে)
             for _ in range(6):
                 time.sleep(0.5)
                 raw_data = CANDLE_CACHE.get(target_pair, [])
                 if raw_data:
                     break
             
-            # ব্যাকআপ হিস্টোরি পোলিং মেথড (যদি সকেটে একটু দেরি হয়)
             if not raw_data:
                 future = asyncio.run_coroutine_threadsafe(
                     CLIENT.get_candles(asset=target_pair, end_from_time=int(time.time()), offset=count * 60, period=60),
@@ -160,9 +155,8 @@ def get_candles(
         raw_data = list(raw_data.values())
 
     if not raw_data or not isinstance(raw_data, list):
-        return {**OWNER_INFO, "total_count": 0, "data": [], "message": "Data is synchronization in progress. Please reload."}
+        return {**OWNER_INFO, "total_count": 0, "data": [], "message": "Data synchronization in progress. Please reload."}
 
-    # ডাটা ফরম্যাটিং ও সর্টিং
     valid_candles = []
     for c in raw_data:
         if c and isinstance(c, dict) and "time" in c and "open" in c:
@@ -178,7 +172,7 @@ def get_candles(
             cl = float(c.get("close", 0))
             ts = int(float(c.get("time", time.time())))
             
-            t_str = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(ts + 21600)) # BD Time (UTC+6)
+            t_str = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(ts + 21600))  # BD Time (UTC+6)
             
             formatted_data.append({
                 "id": str(i + 1),
@@ -205,6 +199,5 @@ def get_candles(
     }
 
 if __name__ == '__main__':
-    # রেন্ডারের ডাইনামিক পোর্ট বাইন্ডিং ফিক্স
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
