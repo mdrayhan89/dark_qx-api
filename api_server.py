@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Quotex Pro Trader — HARDCODED AUTH & PROXY ROUTING
-✅ 100% Real Live Production Stream Over Embedded Proxy
-✅ Credentials Pre-baked for Automatic Verification
-❌ NO Random Data | NO Mocking Structure
+Quotex Pro Trader — CRASH FIXED VERSION
+✅ 100% Embedded HTML & Layout Included (Fixes NameError)
+✅ Pre-baked Auto Login Node (trrayhanislam786@gmail.com)
+✅ Real-Time Proxy Tunnelling Layer (Bypasses Cloudflare Protocol Block)
 """
 import asyncio
 import threading
@@ -34,16 +34,12 @@ PROXY_PORT = "1080"        # Your Client Proxy Port (e.g., 1080, 7890)
 
 if ENABLE_PROXY_ROUTING:
     tunnel_endpoint = f"{PROXY_PROTOCOL}://{PROXY_HOST}:{PROXY_PORT}"
-    
-    # OS level environment runtime intercept mapping for Client connections
     os.environ['HTTP_PROXY'] = tunnel_endpoint
     os.environ['HTTPS_PROXY'] = tunnel_endpoint
     os.environ['ALL_PROXY'] = tunnel_endpoint
     os.environ['http_proxy'] = tunnel_endpoint
     os.environ['https_proxy'] = tunnel_endpoint
     os.environ['all_proxy'] = tunnel_endpoint
-    
-    # SSL Intercept bypass layer mapping
     os.environ['CURL_CA_BUNDLE'] = certifi.where()
     print(f"🔒 Tunnel Routing Injected: {tunnel_endpoint}")
 
@@ -55,7 +51,6 @@ os.environ['WEBSOCKET_CLIENT_CA_BUNDLE'] = cert_path
 try:
     from pyquotex.stable_api import Quotex
     from pyquotex.utils.processor import process_candles
-    # Dynamic injection of credentials to override library config file
 except ImportError as e:
     print(f"\n❌ Error: Missing dependency - {e}")
     print("Run: pip install git+https://github.com/cleitonleonel/pyquotex.git@master\n")
@@ -416,7 +411,6 @@ async def connect_with_retry(max_attempts: int = 5) -> Tuple[bool, str]:
     global CLIENT
     for attempt in range(1, max_attempts + 1):
         try:
-            # Overriding default config framework to strictly use your inputs
             CLIENT = Quotex(email=QUOTEX_EMAIL, password=QUOTEX_PASS, host="qxbroker.com", lang="en")
             check, reason = await CLIENT.connect()
             if check:
@@ -496,7 +490,6 @@ async def start_streaming(asset_display: str):
 # =====================================================================
 @eel.expose
 def login(email: str = None, password: str = None):
-    # UI input-ke ignore kore directly hardcoded email/pass execute hobe
     def run():
         try:
             future = asyncio.run_coroutine_threadsafe(connect_to_quotex(), ASYNC_LOOP)
@@ -575,13 +568,161 @@ def get_connection_status():
         }
     return {"connected": False, "assets_loaded": False, "login_success": False}
 
-# (Keep your write_login_html and write_chart_html methods here)
+# =====================================================================
+# 📦 HTML WRITERS ENGINE (CRASH FIXED: INCLUDED DIRECT TEMPLATES)
+# =====================================================================
+def write_login_html():
+    with open(os.path.join("web", "login.html"), "w", encoding="utf-8") as f:
+        f.write('''<!DOCTYPE html>
+<html>
+<head>
+    <title>Quotex Engine Authorization</title>
+    <script type="text/javascript" src="/eel.js"></script>
+    <style>
+        body { background: #0b0e14; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin:0; }
+        .box { background: #151a24; padding: 40px; border-radius: 8px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { margin-bottom: 24px; color: #00c510; font-size: 22px; }
+        .btn { background: #00c510; color: #000; border: none; padding: 12px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .status { margin-top: 15px; font-size: 13px; color: #8a94a6; min-height: 20px; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Quotex Live Connection</h2>
+        <p style="font-size:13px; color:#aaa; margin-bottom:20px;">Credentials and Secure VPN Proxy Pre-configured</p>
+        <button class="btn" id="loginBtn" onclick="startAuth()">Connect Securely</button>
+        <div class="status" id="statusBox">Ready to connect...</div>
+    </div>
+    <script>
+        function startAuth() {
+            document.getElementById("loginBtn").disabled = true;
+            document.getElementById("statusBox").innerText = "🔒 Authenticating over secure Proxy Node...";
+            document.getElementById("statusBox").style.color = "#00c510";
+            eel.login()(); 
+        }
+        eel.expose(onLoginSuccess);
+        function onLoginSuccess() {
+            window.location.href = "chart.html";
+        }
+        eel.expose(onLoginError);
+        function onLoginError(reason) {
+            document.getElementById("loginBtn").disabled = false;
+            document.getElementById("statusBox").innerText = "❌ Connection failed: " + reason;
+            document.getElementById("statusBox").style.color = "#ff0000";
+        }
+    </script>
+</body>
+</html>''')
 
+def write_chart_html():
+    with open(os.path.join("web", "chart.html"), "w", encoding="utf-8") as f:
+        f.write('''<!DOCTYPE html>
+<html>
+<head>
+    <title>Quotex Live Analytical Monitor</title>
+    <script type="text/javascript" src="/eel.js"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { margin: 0; background: #0b0e14; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+        #nav { height: 45px; background: #151a24; display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid #262f3d; justify-content: space-between; }
+        .controls { display: flex; align-items: center; gap: 10px; }
+        select { background: #1c2430; color: #fff; border: 1px solid #36455a; padding: 6px 12px; border-radius: 4px; outline: none; cursor: pointer; font-size: 13px; }
+        #chart { width: 100vw; height: calc(100vh - 45px); position: relative; }
+        .badge { background: #262f3d; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #00c510; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="nav">
+        <div class="controls">
+            <select id="assetSelector" onchange="switchAsset()"></select>
+            <select id="tfSelector" onchange="switchTF()"></select>
+        </div>
+        <div class="badge" id="netStatus">⚡ Proxy Stream Active</div>
+    </div>
+    <div id="chart"></div>
+    <script>
+        let chart, candleSeries, currentAsset = "AUD/CAD (OTC)", currentTF = "1m";
+        let isFirstLoad = true;
+
+        async function initLayout() {
+            chart = LightweightCharts.createChart(document.getElementById('chart'), {
+                layout: { background: { color: '#0b0e14' }, textColor: '#8a94a6', fontSize: 11 },
+                grid: { vertLines: { color: '#1f2633' }, horzLines: { color: '#1f2633' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                rightPriceScale: { borderColor: '#262f3d' },
+                timeScale: { borderColor: '#262f3d', timeVisible: true, secondsVisible: true }
+            });
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#00C510', downColor: '#ff0000', borderUpColor: '#00C510', borderDownColor: '#ff0000', wickUpColor: '#00C510', wickDownColor: '#ff0000'
+            });
+
+            let cats = await eel.get_asset_categories()();
+            let select = document.getElementById("assetSelector");
+            for (let cat in cats) {
+                let group = document.createElement("optgroup");
+                group.label = cat;
+                cats[cat].forEach(a => {
+                    let opt = document.createElement("option");
+                    opt.value = a; opt.text = a;
+                    if(a === currentAsset) opt.selected = true;
+                    group.appendChild(opt);
+                });
+                select.appendChild(group);
+            }
+
+            let tfs = await eel.get_timeframes()();
+            let tfSelect = document.getElementById("tfSelector");
+            tfs.forEach(t => {
+                let opt = document.createElement("option");
+                opt.value = t; opt.text = t;
+                if(t === currentTF) opt.selected = true;
+                tfSelect.appendChild(opt);
+            });
+
+            window.addEventListener('resize', () => chart.resize(window.innerWidth, window.innerHeight - 45));
+            eel.on_chart_opened()();
+        }
+
+        function switchAsset() {
+            isFirstLoad = true;
+            currentAsset = document.getElementById("assetSelector").value;
+            eel.change_asset(currentAsset)();
+        }
+
+        function switchTF() {
+            isFirstLoad = true;
+            currentTF = document.getElementById("tfSelector").value;
+            eel.change_timeframe(currentTF)();
+        }
+
+        eel.expose(updateChart);
+        function updateChart(payload) {
+            if (payload.asset !== currentAsset || payload.timeframe !== currentTF) return;
+            if (isFirstLoad) {
+                candleSeries.setData(payload.candles);
+                chart.timeScale().fitContent();
+                isFirstLoad = false;
+            } else if (payload.candles.length > 0) {
+                let last = payload.candles[payload.candles.length - 1];
+                candleSeries.update(last);
+            }
+        }
+
+        window.onload = initLayout;
+    </script>
+</body>
+</html>''')
+
+# =====================================================================
+# Main Platform Bootloader Engine
+# =====================================================================
 if __name__ == '__main__':
     os.makedirs("web", exist_ok=True)
-    # write_login_html()
-    # write_chart_html()
+    write_login_html()
+    write_chart_html()
     
-    log("🚀 Engine Booted with Pre-Baked Credentials and Proxy Interceptors.")
+    print("🚀 Quotex Pro Trader — Fixed Engine Core Launched")
+    print("⚠️ Ensure your local proxy/VPN client port matches configuration.")
+    
     eel.init('web')
     eel.start('login.html', size=(1280, 720))
