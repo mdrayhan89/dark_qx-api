@@ -3,7 +3,7 @@
 """
 Quotex Pro Trader — CLEAN CONSOLE VERSION
 ✅ 100% Real Live PyQuotex Data Integration
-🔒 Built-in Global VPN/Proxy Routing Engine
+🔒 Async-Safe Global VPN/Proxy Engine (No Loop Crashes)
 ❌ NO Random or Mock Data Fallbacks
 """
 import asyncio
@@ -23,13 +23,13 @@ from typing import Optional, Dict, List, Tuple
 # =====================================================================
 USE_VPN_PROXY = True
 PROXY_TYPE = "socks5"      # অপশন: "socks5" অথবা "http"
-PROXY_IP = "127.0.0.1"     # তোমার VPN/Proxy ক্লায়েন্ট বা আইপি (যেমন: 127.0.0.1)
-PROXY_PORT = "1080"        # তোমার VPN/Proxy পোর্ট (যেমন: 1080, 2080, 7890 ইত্যাদি)
+PROXY_IP = "127.0.0.1"     # তোমার লোকাল VPN/Proxy আইপি
+PROXY_PORT = "1080"        # তোমার VPN/Proxy ক্লায়েন্টের পোর্ট (যেমন: 1080, 2080, 7890, 8080)
 
 if USE_VPN_PROXY:
+    # asyncio-safe ট্রাফিকের জন্য এনভায়রনমেন্ট ভ্যারিয়েবল সেটআপ
     proxy_url = f"{PROXY_TYPE}://{PROXY_IP}:{PROXY_PORT}"
     
-    # ১. standard environment variables সেট করা (aiohttp, requests, urllib3 এর জন্য)
     os.environ['HTTP_PROXY'] = proxy_url
     os.environ['HTTPS_PROXY'] = proxy_url
     os.environ['ALL_PROXY'] = proxy_url
@@ -37,19 +37,9 @@ if USE_VPN_PROXY:
     os.environ['https_proxy'] = proxy_url
     os.environ['all_proxy'] = proxy_url
     
-    # ২. লো-লেভেল সকেট টানেলিং (PySocks) - যাতে Raw WebSockets ও প্রক্সি দিয়ে যায়
-    try:
-        import socks
-        import socket
-        if PROXY_TYPE == "socks5":
-            socks.set_default_proxy(socks.SOCKS5, PROXY_IP, int(PROXY_PORT))
-        elif PROXY_TYPE == "http":
-            socks.set_default_proxy(socks.HTTP, PROXY_IP, int(PROXY_PORT))
-        socket.socket = socks.socksocket
-        print(f"🔒 Global VPN/Proxy Tunnel Active: {proxy_url}")
-    except ImportError:
-        print("⚠️ Warning: 'PySocks' build package not found. Run 'pip install PySocks'")
-        print("🌐 Falling back to standard environment variable proxies.")
+    # SSL ভেরিফিকেশন প্রক্সির মধ্য দিয়ে পাস করানোর জন্য সেটিংস
+    os.environ['CURL_CA_BUNDLE'] = certifi.where()
+    print(f"🔒 Async-Safe VPN/Proxy Tunnel Configured: {proxy_url}")
 
 # ✅ SSL Setup (Official CA Bundle setup for secure websocket)
 cert_path = certifi.where()
@@ -309,7 +299,7 @@ def login_to_quotex(email, password):
             
     future = asyncio.run_coroutine_threadsafe(_auth(), ASYNC_LOOP)
     try:
-        success, msg = future.result(timeout=45) # প্রক্সির কারণে টাইমআউট সামান্য বাড়ানো হয়েছে
+        success, msg = future.result(timeout=45) # প্রক্সি লেটেন্সির জন্য ৪৫ সেকেন্ড দেওয়া হলো
         LOGIN_SUCCESS = success
     except Exception as e:
         success, msg = False, f"Connection Timeout: {str(e)}"
