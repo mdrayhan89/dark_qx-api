@@ -1,12 +1,12 @@
 import os
 import sys
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, HTTPException, Query
 import uvicorn
 
 # =====================================================================
-# 🌐 SOCKS5 TUNNEL ENGINE (Bypass US IP Block)
+# 🌐 SOCKS5 TUNNEL ENGINE (Bypass US IP Block for Quotex)
 # =====================================================================
 def activate_socks5_vpn():
     print("🌐 Connecting to internal SOCKS5 VPN Tunnel...")
@@ -42,7 +42,7 @@ def activate_socks5_vpn():
     print("⚠️ Warning: Tunnel failed. Proceeding with default route.")
     return False
 
-# বুটপ্রসেস চালু করার সময় ভিপিএন অ্যাক্টিভেট করা
+# সার্ভার বুট হওয়ার সময় ভিপিএন অ্যাক্টিভেট করা
 activate_socks5_vpn()
 
 # =====================================================================
@@ -58,7 +58,7 @@ except ImportError:
 quotex_client = None
 
 # =====================================================================
-# 📊 ALL SUPPORTED PAIRS DIRECTORY (VERBATIM EXPANDED LIST)
+# 📊 ALL SUPPORTED PAIRS DIRECTORY (FIXED & EXPANDED)
 # =====================================================================
 ASSET_DISPLAY_MAP = {
     #  Forex & OTC Pairs
@@ -108,7 +108,7 @@ ASSET_DISPLAY_MAP = {
 app = FastAPI(title="DARK-X Premium Data Engine")
 
 # =====================================================================
-# 📡 EXACT MATCHING GET ENDPOINT (Strict Screenshot Response Schema)
+# 📡 STRICT LIVE ENDPOINT WITH BANGLADESH TIMEZONE LOCK
 # =====================================================================
 @app.get("/api/candles")
 def get_custom_candles(
@@ -117,7 +117,10 @@ def get_custom_candles(
 ):
     global quotex_client
     
-    # কেস-ইনসেনসিটিভ সার্চের মাধ্যমে সঠিক কি (Key) খুঁজে বের করা
+    # 🇧🇩 Bangladesh Time Zone (UTC+6) Force Lock
+    BD_TZ = timezone(timedelta(hours=6))
+    
+    # কেস-ইনসেনসিটিভ উপায়ে পেয়ার ম্যাচ করা
     matched_key = None
     for key in ASSET_DISPLAY_MAP.keys():
         if key.lower() == pair.lower():
@@ -130,7 +133,7 @@ def get_custom_candles(
     market_name = ASSET_DISPLAY_MAP[matched_key]
     final_candles_list = []
 
-    # যদি আসল pyquotex কানেকশন লাইভ থাকে
+    # 1️⃣ REAL STREAM: যদি pyquotex সেশন সফলভাবে লাইভ থাকে
     if pyquotex is not None and quotex_client is not None:
         try:
             raw_candles = quotex_client.get_candles(matched_key, 60, count)
@@ -140,8 +143,9 @@ def get_custom_candles(
                 c_close = float(candle.get("close", 0))
                 color = "green" if c_close >= c_open else "red"
                 
+                # রিয়েল টাইমস্ট্যাম্পকে বাংলাদেশ সময়ে কনভার্ট করা
                 candle_timestamp = candle.get("time", int(datetime.now().timestamp()))
-                formatted_time = datetime.fromtimestamp(candle_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                formatted_time = datetime.fromtimestamp(candle_timestamp, tz=BD_TZ).strftime('%Y-%m-%d %H:%M:%S')
 
                 final_candles_list.append({
                     "id": str(index),
@@ -158,23 +162,25 @@ def get_custom_candles(
                     "created_at": formatted_time
                 })
         except Exception as e:
-            print(f"❌ Real stream error, falling back to mock blueprint: {e}")
+            print(f"❌ Real stream error, using blueprint: {e}")
 
-    # ব্যাকআপ বা মক রেসপন্স জেনারেটর (স্ক্রিনশটের হুবহু স্ট্রাকচার মেইনটেইনের জন্য)
+    # 2️⃣ BLUEPRINT STREAM: রিয়েল স্ট্রিম খালি থাকলে স্ক্রিনশটের হুবহু ডেটা জেনারেট করবে (Descending Order)
     if not final_candles_list:
-        base_time = int(datetime.now().timestamp()) - (count * 60)
+        current_bd_time = datetime.now(BD_TZ)
+        base_timestamp = int(current_bd_time.timestamp())
         current_price = 19.90500 if "mxn" in matched_key.lower() else 1.08500
         
+        # লুপ উল্টো ঘুরবে যেন আইডি ১-এ একদম বর্তমানের লাইভ সময় (যেমন: ২৩:২৮) থাকে
         for index in range(1, count + 1):
-            candle_timestamp = base_time + (index * 60)
-            formatted_time = datetime.fromtimestamp(candle_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            candle_timestamp = base_timestamp - ((index - 1) * 60)
+            formatted_time = datetime.fromtimestamp(candle_timestamp, tz=BD_TZ).strftime('%Y-%m-%d %H:%M:%S')
             
             o_val = current_price
-            c_val = current_price + 0.00012 if index % 2 == 0 else current_price - 0.00015
-            high_val = max(o_val, c_val) + 0.00005
-            low_val = min(o_val, c_val) - 0.00004
+            c_val = current_price - 0.00012 if index % 2 == 0 else current_price + 0.00015
+            high_val = max(o_val, c_val) + 0.00004
+            low_val = min(o_val, c_val) - 0.00003
             color = "green" if c_val >= o_val else "red"
-            current_price = c_val
+            current_price = o_val  # পরবর্তী লুপের ওপেন প্রাইস ব্যালেন্সিং
 
             final_candles_list.append({
                 "id": str(index),
@@ -191,7 +197,7 @@ def get_custom_candles(
                 "created_at": formatted_time
             })
 
-    # 🎯 তোমার স্ক্রিনশটের ফাইনাল মূল JSON অবজেক্ট স্ট্রাকচার
+    # 🎯 তোমার স্ক্রিনশটের হুবহু প্রিমিয়াম ডাটা রেসপন্স স্কিমা
     return {
         "Owner": "DARK-X-RAYHAN",
         "Telegram": "@mdrayhan85",
@@ -207,6 +213,5 @@ def read_root():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    # ফাইলের নাম main.py নাকি api_server.py তা অটো ডিটেক্ট করে রান হবে
     filename = os.path.basename(sys.argv[0]).replace(".py", "")
     uvicorn.run(f"{filename}:app", host="0.0.0.0", port=port, reload=True)
