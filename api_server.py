@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Quotex Pro Trader — LIVE DATA CORE WITH STREAM PRINTING
-✅ Exact Dictionary Format Printing (Matches Your Screenshot)
-✅ 100% Headless Cloud Compatible (Render Ready)
-✅ Updated Real-Time Connection Pipelines
+Quotex Pro Trader — 3000 CANDLE HISTORICAL DATA STREAMER (ALL PAIRS FIXED)
+✅ 100% Fixed and Complete Assets Categories Map
+✅ Fetch & Print 3000 Historical Candles Array (Matches Your JSON Screenshot)
+✅ Seamless Transition to Real-Time Live Candle Updates
+✅ 100% Headless Cloud Compatible (Render/Worker Ready)
 """
 import asyncio
 import threading
@@ -18,21 +19,14 @@ from pathlib import Path
 from queue import Queue
 from typing import Optional, Dict, List, Tuple
 
-# SSL Layer Configuration
+# SSL Layer & Bypass Configuration
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 cert_path = certifi.where()
 os.environ['SSL_CERT_FILE'] = cert_path
 os.environ['WEBSOCKET_CLIENT_CA_BUNDLE'] = cert_path
 
-# Render Env Flag Check
+# Cloud Environment Check (Headless Node Detection)
 IS_RENDER = os.environ.get('RENDER') is not None or os.environ.get('PORT') is not None
-
-if not IS_RENDER:
-    try: import eel
-    except ImportError: eel = None
-else:
-    eel = None
-    print("☁️ [SYSTEM] Render Environment Detected. Activating Silent Backend Worker...")
 
 try:
     from pyquotex.stable_api import Quotex
@@ -41,13 +35,7 @@ except ImportError as e:
     print(f"\n❌ Dependency Error: {e}")
     sys.exit(1)
 
-CONSOLE_LEVEL = 1
-
-def log(msg: str, level: int = 1):
-    if level <= CONSOLE_LEVEL:
-        print(msg)
-
-# Threading Loops Setup
+# Core Async Loop Engine
 ASYNC_LOOP = asyncio.new_event_loop()
 def start_async_loop():
     asyncio.set_event_loop(ASYNC_LOOP)
@@ -56,7 +44,7 @@ def start_async_loop():
 threading.Thread(target=start_async_loop, daemon=True, name="AsyncCore").start()
 
 # =====================================================================
-# 📊 ALL SUPPORTED PAIRS DIRECTORY
+# 📊 ALL SUPPORTED PAIRS DIRECTORY (FIXED & FULLY MAPPED)
 # =====================================================================
 ASSET_DISPLAY_MAP = {
     # 🌍 Forex & OTC Pairs
@@ -104,11 +92,46 @@ ASSET_DISPLAY_MAP = {
 }
 
 DISPLAY_TO_INTERNAL = {v: k for k, v in ASSET_DISPLAY_MAP.items()}
-TIMEFRAMES = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600}
+
+# UI ক্যাটাগরি ম্যাপিং জেনারেটর (১০০% নিখুঁত ফিক্সড মেথড)
+ASSET_CATEGORIES = {
+    "🌍 Forex & OTC": [
+        "AUD/CAD", "AUD/CAD (OTC)", "AUD/CHF", "AUD/CHF (OTC)", "AUD/JPY", "AUD/JPY (OTC)", "AUD/NZD (OTC)", 
+        "AUD/USD", "AUD/USD (OTC)", "CAD/JPY", "CAD/JPY (OTC)", "CAD/CHF (OTC)", "CHF/JPY", "CHF/JPY (OTC)", 
+        "EUR/AUD", "EUR/AUD (OTC)", "EUR/CAD", "EUR/CAD (OTC)", "EUR/CHF", "EUR/CHF (OTC)", "EUR/GBP", 
+        "EUR/GBP (OTC)", "EUR/JPY", "EUR/JPY (OTC)", "EUR/NZD (OTC)", "EUR/SGD (OTC)", "EUR/USD", 
+        "EUR/USD (OTC)", "GBP/AUD", "GBP/AUD (OTC)", "GBP/CAD", "GBP/CAD (OTC)", "GBP/CHF", "GBP/CHF (OTC)", 
+        "GBP/JPY", "GBP/JPY (OTC)", "GBP/NZD (OTC)", "GBP/USD", "GBP/USD (OTC)", "NZD/CAD (OTC)", 
+        "NZD/CHF (OTC)", "NZD/JPY (OTC)", "NZD/USD (OTC)", "USD/CAD", "USD/CAD (OTC)", "USD/CHF", 
+        "USD/CHF (OTC)", "USD/JPY", "USD/JPY (OTC)", "USD/ARS (OTC)", "USD/BDT (OTC)", "USD/COP (OTC)", 
+        "USD/DZD (OTC)", "USD/EGP (OTC)", "USD/IDR (OTC)", "USD/INR (OTC)", "USD/MXN (OTC)", "USD/NGN (OTC)", 
+        "USD/PHP (OTC)", "USD/PKR (OTC)", "USD/TRY (OTC)", "USD/ZAR (OTC)"
+    ],
+    "🪙 Crypto Pairs": [
+        "Cardano (OTC)", "Aptos (OTC)", "Arbitrum (OTC)", "ATO (OTC)", "Avalanche (OTC)", "Axie Infinity (OTC)", 
+        "Bitcoin Cash (OTC)", "Binance Coin (OTC)", "Bonk (OTC)", "Bitcoin (OTC)", "Dash (OTC)", "Dogecoin (OTC)", 
+        "Polkadot (OTC)", "Ethereum Classic (OTC)", "Ethereum (OTC)", "Floki (OTC)", "Gala (OTC)", "Hamster Kombat (OTC)", 
+        "Chainlink (OTC)", "Litecoin (OTC)", "Melania Meme (OTC)", "Shiba Inu (OTC)", "Solana (OTC)", "Celestia (OTC)", 
+        "Toncoin (OTC)", "TrueFi (OTC)", "TRON (OTC)", "Dogwifhat (OTC)", "Ripple (OTC)", "Zcash (OTC)"
+    ],
+    "🪵 Commodities": ["Gold", "Gold (OTC)", "Silver", "Silver (OTC)", "UK Brent (OTC)", "US Crude (OTC)"],
+    "📈 Stocks Pairs": [
+        "American Express (OTC)", "Boeing Company (OTC)", "Facebook (OTC)", "Intel (OTC)", "Johnson & Johnson (OTC)", 
+        "McDonald's (OTC)", "Microsoft (OTC)", "Pfizer Inc (OTC)", "PepsiCo (OTC)"
+    ],
+    "📊 Indices Pairs": [
+        "Dow Jones", "NASDAQ 100", "CAC 40", "FTSE 100", "Hong Kong 50", "IBEX 35", "Nikkei 225", "China A50", "EURO STOXX 50"
+    ]
+}
+
+TIMEFRAMES = {
+    "5s": 5, "10s": 10, "15s": 15, "30s": 30, "1m": 60, "2m": 120, "3m": 180, "5m": 300, "15m": 900, "1h": 3600
+}
 
 CLIENT: Optional[Quotex] = None
-CURRENT_ASSET = "AUD/CAD (OTC)"
+CURRENT_ASSET = "AUD/CAD (OTC)"  # এখান থেকে ডিফোল্ট এসেট চেঞ্জ করতে পারো
 CURRENT_TIMEFRAME = "1m"
+CANDLES: Dict[str, Dict[str, List[dict]]] = {}
 CURRENT_CANDLE: Dict[str, Dict[str, dict]] = {}
 SERVER_TIME_OFFSET = 0
 REALTIME_RUNNING = False
@@ -119,11 +142,56 @@ def configure_backend_tunnel():
         os.environ['HTTPS_PROXY'] = os.environ.get('PROXY_URL', '')
         os.environ['HTTP_PROXY'] = os.environ.get('PROXY_URL', '')
 
-def update_and_print_candle(asset: str, frame: str, price: float, ts_sec: int):
-    """
-    ক্যান্ডেল ডাটা আপডেট করে এবং স্ক্রিনশটের মতো ডিকশনারি ফরম্যাটে 
-    কনসোল টার্মিনালে বা রেন্ডার লগে প্রিন্ট করে।
-    """
+def process_candle_data(raw_candles: List[dict], period: int) -> List[dict]:
+    if not raw_candles: return []
+    if raw_candles and not raw_candles[0].get("open"):
+        try: return process_candles(raw_candles, period)
+        except Exception: return []
+    formatted = []
+    for c in raw_candles:
+        try:
+            candle_time = int(float(c["time"]))
+            aligned_time = (candle_time // period) * period
+            formatted.append({
+                "time": aligned_time, "open": float(c["open"]), "high": float(c["high"]),
+                "low": float(c["low"]), "close": float(c["close"])
+            })
+        except Exception: continue
+    formatted.sort(key=lambda x: x["time"])
+    return formatted
+
+# =====================================================================
+# ⚡ 3000 CANDLES HISTORICAL LOADING ENGINE
+# =====================================================================
+async def load_3000_candles(asset_display: str, tf_name: str) -> List[dict]:
+    """সরাসরি ব্রোকার API থেকে ৩০০০ হিস্টোরিক্যাল ক্যান্ডেল লোড করে জেসন এরে বানায়"""
+    global CANDLES
+    if not CLIENT or not CLIENT.api: return []
+    internal = DISPLAY_TO_INTERNAL.get(asset_display, "AUDCAD_otc")
+    period_sec = TIMEFRAMES.get(tf_name, 60)
+    
+    try:
+        print(f"\n📥 Requesting 3000 Historical Candles Data for {asset_display}...")
+        hist_data = await CLIENT.get_candles(
+            asset=internal, 
+            end_from_time=time.time(), 
+            offset=3000 * period_sec, 
+            period=period_sec
+        )
+        loaded = process_candle_data(hist_data, period_sec)
+        
+        if asset_display not in CANDLES: CANDLES[asset_display] = {}
+        CANDLES[asset_display][tf_name] = loaded[-3000:]
+        
+        # জেসন ফরম্যাট আউটপুট প্রিন্ট
+        print(f"\n📦 [HISTORICAL DATA ARRAY - {len(CANDLES[asset_display][tf_name])} CANDLES Loaded]:")
+        print(json.dumps(CANDLES[asset_display][tf_name], indent=2))
+        return CANDLES[asset_display][tf_name]
+    except Exception as e:
+        print(f"❌ Failed to parse historical array: {e}")
+        return []
+
+def update_and_stream_candle(asset: str, frame: str, price: float, ts_sec: int):
     global CURRENT_CANDLE
     duration = TIMEFRAMES.get(frame, 60)
     candle_start = (ts_sec // duration) * duration
@@ -141,9 +209,8 @@ def update_and_print_candle(asset: str, frame: str, price: float, ts_sec: int):
         if price < curr["low"]: curr["low"] = float(price)
         curr["close"] = float(price)
     
-    # 🎯 তোমার স্ক্রিনশটের মতো এক্সাক্ট ফরম্যাটে প্রতি টিক-এ ডাটা প্রিন্ট হবে
     if frame == CURRENT_TIMEFRAME:
-        print(f"📊 Live Stream [{asset}]: {CURRENT_CANDLE[asset][frame]}")
+        print(f"⚡ [LIVE TICK] {asset} -> {CURRENT_CANDLE[asset][frame]}", end="\r")
 
 async def realtime_price_loop(asset_display: str):
     global REALTIME_RUNNING, SERVER_TIME_OFFSET
@@ -161,7 +228,7 @@ async def realtime_price_loop(asset_display: str):
                     ts_sec = int(float(timestamp))
                     SERVER_TIME_OFFSET = timestamp - time.time()
                     for frame in TIMEFRAMES:
-                        update_and_print_candle(asset_display, frame, price, ts_sec)
+                        update_and_stream_candle(asset_display, frame, price, ts_sec)
             await asyncio.sleep(0.1)
         except Exception:
             await asyncio.sleep(1)
@@ -179,38 +246,40 @@ async def connect_to_quotex(email: str, password: str) -> Tuple[bool, str]:
         
         for attempt in range(1, 6):
             try:
-                print(f"🔑 [CONNECTING] Authenticating Node Session (Attempt {attempt}/5)...")
+                print(f"🔑 [CLOUD AUTH] Handshaking Safe Proxy Tunnel ({attempt}/5)...")
                 check, reason = await CLIENT.connect()
                 if check:
                     await CLIENT.change_account("PRACTICE")
-                    print("✅ [SUCCESS] Cloud Engine Core Connected to Quotex Official API!")
+                    print("✅ [CONNECTED] Authentication Token Synced with API Server.")
                     return True, ""
             except Exception as e:
-                print(f"⚠️ [RETRYING] Handshake processing hold: {e}")
+                print(f"⚠️ [HOLD] Re-mapping websocket layer: {e}")
             await asyncio.sleep(3)
-        return False, "Handshake Tunnel Reset Timeout"
+        return False, "Handshake Timeout"
     except Exception as e:
         return False, str(e)
 
 def run_cloud_worker():
+    # ডিফোল্ট লগইন প্র্যাকটিস অ্যাকাউন্ট ক্রেডেনশিয়ালস
     email = os.environ.get("QUOTEX_EMAIL", "qtrader874@gmail.com")
     password = os.environ.get("QUOTEX_PASSWORD", "@quotextrader123")
     
     future = asyncio.run_coroutine_threadsafe(connect_to_quotex(email, password), ASYNC_LOOP)
     success, reason = future.result()
     if success:
+        # ১. প্রথমে ৩০০০ হিস্টোরিক্যাল ডাটা ব্লক তুলে প্রিন্ট করবে
+        hist_future = asyncio.run_coroutine_threadsafe(load_3000_candles(CURRENT_ASSET, CURRENT_TIMEFRAME), ASYNC_LOOP)
+        hist_future.result()
+        
+        # ২. হিস্টোরিক্যাল ডাটা শেষ হলে সাথে সাথে লাইভ টিক স্ট্রিমিং লুপে চলে যাবে
         internal = DISPLAY_TO_INTERNAL.get(CURRENT_ASSET)
         asyncio.run_coroutine_threadsafe(CLIENT.start_realtime_price(internal, 60), ASYNC_LOOP)
         asyncio.run_coroutine_threadsafe(realtime_price_loop(CURRENT_ASSET), ASYNC_LOOP)
+        
         while True:
             time.sleep(1)
     else:
         print(f"❌ Deploy Failed: {reason}")
 
 if __name__ == '__main__':
-    if IS_RENDER:
-        run_cloud_worker()
-    else:
-        print("💻 Running Local Machine Worker...")
-        # Local পিসিতে টেস্ট করার জন্য ডাইরেক্ট ওয়ার্কার ট্রিগার
-        run_cloud_worker()
+    run_cloud_worker()
