@@ -1,2 +1,4 @@
-eel
+git+https://github.com/cleitonleonel/pyquotex.git@master
 certifi
+urllib3
+websockets
