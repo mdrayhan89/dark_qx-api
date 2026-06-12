@@ -1,7 +1,2 @@
-fastapi
-uvicorn
-pydantic
-requests
-PySocks
-websockets
-websocket-client
+eel
+certifi
